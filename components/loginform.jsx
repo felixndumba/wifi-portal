@@ -1,24 +1,40 @@
+
 "use client"
 
 import {useState} from "react"
+import { useRouter } from "next/navigation"
 
 export default function LoginForm({ onSwitchTab }){
 
 const [phone,setPhone] = useState("")
+const [password,setPassword] = useState("")
+const router = useRouter()
 
 const login = async ()=>{
+
+if(!phone || !password){
+alert("Please enter both phone number and password")
+return
+}
 
 const res = await fetch("/api/login",{
 method:"POST",
 headers:{
 "Content-Type":"application/json"
 },
-body:JSON.stringify({phone})
+body:JSON.stringify({phone, password})
 })
 
 const data = await res.json()
 
+if(data.success){
+// Store user info in localStorage
+localStorage.setItem("user", JSON.stringify(data.user))
 alert(data.message)
+router.push("/subscriptions")
+}else{
+alert(data.error)
+}
 
 }
 
@@ -41,6 +57,17 @@ type="text"
 className="w-full border-b border-gray-400 py-3 outline-none"
 value={phone}
 onChange={(e)=>setPhone(e.target.value)}
+/>
+
+<label className="text-gray-500 mt-4 block">
+Password *
+</label>
+
+<input
+type="password"
+className="w-full border-b border-gray-400 py-3 outline-none"
+value={password}
+onChange={(e)=>setPassword(e.target.value)}
 />
 
 </div>
@@ -69,3 +96,4 @@ Don't have an account?{" "}
 )
 
 }
+
