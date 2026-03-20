@@ -1,12 +1,40 @@
+"use client"
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Header from "../../components/header";
+import { useAuth } from "../../lib/auth";
 
 export default function PlansPage() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!loading) return;
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) {
+      router.push('/login');
+      return;
+    }
+    setLoading(false);
+  }, [router, loading]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <p className="text-gray-400">Loading...</p>
+      </div>
+    );
+  }
+
   const plans = [
-    { name: "Daily", price: 50, data: "1GB", validity: "24 Hours" },
-    { name: "Weekly", price: 300, data: "5GB", validity: "7 Days" },
-    { name: "Monthly Basic", price: 1000, data: "15GB", validity: "30 Days" },
-    { name: "Monthly Standard", price: 2000, data: "40GB", validity: "30 Days" },
-    { name: "Monthly Premium", price: 3500, data: "100GB", validity: "30 Days" },
+    { name: "MATHE OFFER", price: 10, validity: "1 Hours" },
+    { name: "MTAA OFFER", price: 20,  validity: "2 Hours 30 Min" },
+    { name: "BROWSE OFFER", price: 40,  validity: "5 Hours" },
+    { name: "BROWSE SANA OFFER", price: 50,  validity: "8 Hours" },
+    { name: "Daily OFFER", price: 80,  validity: "24 Hours" },
+    { name: "WEKEEND OFFERS", price: 150, validity: "2 Days" },
     { name: "Unlimited", price: 5000, data: "Unlimited", validity: "30 Days" },
   ];
 
@@ -22,11 +50,11 @@ export default function PlansPage() {
 
       <div className="grid grid-cols-3 gap-6 mt-10 w-[900px] mx-auto">
         {plans.map((plan, index) => (
-          <div
+            <div
             key={index}
-            className="border border-gray-300 rounded-lg p-6 text-center hover:shadow-lg transition-shadow cursor-pointer"
+            className="bg-gray-900 border border-gray-600 rounded-lg p-6 text-center hover:shadow-lg transition-shadow cursor-pointer"
           >
-            <h3 className="text-2xl font-bold text-gray-800">{plan.name}</h3>
+            <h3 className="text-2xl font-bold text-gray-200">{plan.name}</h3>
             <p className="text-3xl font-bold text-yellow-500 mt-4">KSh {plan.price}</p>
             <p className="text-gray-600 mt-2">{plan.data}</p>
             <p className="text-sm text-gray-500 mt-1">Valid for {plan.validity}</p>

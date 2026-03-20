@@ -1,25 +1,17 @@
 "use client"
 
 import { useState, useEffect } from "react";
+import { useAuth } from "../../lib/auth";
 import Header from "../../components/header";
 
 export default function AddDevicePage() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading } = useAuth();
   const [deviceName, setDeviceName] = useState("");
   const [deviceType, setDeviceType] = useState("");
   const [ipAddress, setIpAddress] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    // Check for logged-in user
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      const userData = JSON.parse(storedUser);
-      setUser(userData);
-    }
-    setLoading(false);
-  }, []);
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -75,17 +67,18 @@ export default function AddDevicePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-900">
         <Header />
         <div className="text-center mt-20">
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-400">Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-900">
+
       <Header />
       
       <div className="text-center mt-8 mb-8">
@@ -101,15 +94,16 @@ export default function AddDevicePage() {
 
       <div className="max-w-2xl mx-auto px-4 pb-16">
         {/* MikroTik Notice */}
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-8">
+        <div className="bg-gray-800 border border-gray-600 rounded-xl p-4 mb-8">
           <div className="flex items-center gap-3">
             <span className="text-2xl">🔗</span>
             <div>
-              <h3 className="font-bold text-blue-800">MikroTik API Integration</h3>
-              <p className="text-sm text-blue-600">Device configuration will connect to your MikroTik router</p>
+              <h3 className="font-bold text-blue-400">MikroTik API Integration</h3>
+              <p className="text-sm text-blue-300">Device configuration will connect to your MikroTik router</p>
             </div>
           </div>
         </div>
+
 
         {/* Add Device Form */}
         <div className="bg-white border border-gray-200 rounded-xl p-8">

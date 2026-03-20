@@ -1,23 +1,16 @@
-
-"use client";
+ "use client";
 
 import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "../lib/auth";
 
 export default function Header() {
-  const [user, setUser] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
   const router = useRouter();
 
-  useEffect(() => {
-    // Check if user is logged in
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-  }, []);
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     // Close dropdown when clicking outside
@@ -31,26 +24,26 @@ export default function Header() {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
-    setUser(null);
+    logout();
     setShowDropdown(false);
     router.push("/");
   };
 
   return (
     <div className="text-center mt-10">
-      <Link href="/">
+      <Link href="/"> 
         <h1 className="text-5xl font-bold cursor-pointer hover:opacity-90 transition-opacity">
-          <span className="text-black">Konnect</span>
+          <span className="text-gray-200">MATHE</span><br />
           <span className="text-yellow-500">Internet</span>
         </h1>
       </Link>
 
       <p className="text-gray-600 mt-2">
-        Fast, Affordable & Reliable
+        Fast, Affordable &amp; Reliable
       </p>
 
-      <div className="flex justify-center gap-16 mt-10 text-gray-700">
+      <div className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-16 mt-10 text-gray-400 sm:text-gray-700 px-4">
+
         <Link 
           href="/plans" 
           className="hover:text-yellow-500 transition-colors cursor-pointer font-medium"
@@ -84,11 +77,11 @@ export default function Header() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
               </svg>
             </button>
-            {showDropdown && (
-              <div className="absolute right-0 mt-2 bg-white border border-gray-200 shadow-lg rounded-md py-2 min-w-[140px] z-50">
+{showDropdown && (
+              <div className="absolute right-0 mt-2 bg-gray-900 border border-gray-700 shadow-lg rounded-md py-2 min-w-[140px] z-50">
                 <button 
                   onClick={handleLogout}
-                  className="w-full px-4 py-2 hover:bg-gray-100 cursor-pointer text-gray-700 text-left flex items-center gap-2"
+                  className="w-full px-4 py-2 hover:bg-gray-800 cursor-pointer text-gray-300 text-left flex items-center gap-2"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
@@ -111,11 +104,12 @@ export default function Header() {
         )}
       </div>
 
-      <div className="bg-gray-600 text-white mt-6 px-6 py-3 w-[600px] mx-auto text-center cursor-pointer hover:bg-gray-500 transition-colors">
-        Chat with Us – Were Here to Help 24x7 !
+      <div className="bg-gray-800 text-gray-200 mt-6 px-4 py-3 w-full max-w-md mx-auto text-center cursor-pointer hover:bg-gray-900 transition-colors">
+        Chat with Us – We're Here to Help 24x7!
         <br />
-        NO SIGNAL AFTER PAYMENT! CLICK ME
+        NO SIGNAL AFTER PAYMENT! CALL 0797624963 FOR ASSISTANCE.
       </div>
+
     </div>
   );
 }

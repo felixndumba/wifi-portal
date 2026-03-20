@@ -204,17 +204,19 @@ export default function SubscriptionsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-900">
         <Header />
         <div className="text-center mt-20">
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-400">Loading...</p>
         </div>
       </div>
+
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
+    return (
+      <div className="min-h-screen bg-gray-900">
+
       <Header />
       
       <div className="text-center mt-8 mb-8">
@@ -250,52 +252,7 @@ export default function SubscriptionsPage() {
           </section>
         )}
 
-        {/* Router Rental Section */}
-        <section className="mb-12">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">📡 Router Rental</h2>
-          <p className="text-gray-500 mb-6">Rent a router with your internet plan</p>
-          <div className="grid md:grid-cols-3 gap-6">
-            {routerPlans.map((plan, index) => (
-              <SubscriptionCard 
-                key={index} 
-                plan={plan} 
-                isPopular={index === 1} 
-                onSubscribe={user ? handleSubscribe : null}
-              />
-            ))}
-          </div>
-        </section>
-
-        {/* Installation Section */}
-        <section className="mb-12">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">🔧 Installation</h2>
-          <p className="text-gray-500 mb-6">Professional installation services</p>
-          <div className="grid md:grid-cols-2 gap-6 max-w-3xl">
-            {installationPlans.map((plan, index) => (
-              <SubscriptionCard 
-                key={index} 
-                plan={plan} 
-                onSubscribe={user ? handleSubscribe : null}
-              />
-            ))}
-          </div>
-        </section>
-
-        {/* Device Purchase Section */}
-        <section>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">📱 Device Purchase</h2>
-          <p className="text-gray-500 mb-6">Buy WiFi devices and accessories</p>
-          <div className="grid md:grid-cols-3 gap-6">
-            {devicePlans.map((plan, index) => (
-              <SubscriptionCard 
-                key={index} 
-                plan={plan} 
-                onSubscribe={user ? handleSubscribe : null}
-              />
-            ))}
-          </div>
-        </section>
-      </div>
+     </div>
     </div>
   );
 }

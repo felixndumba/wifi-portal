@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react";
+import { useAuth } from "../../lib/auth";
 import Header from "../../components/header";
 
 export default function DevicesPage() {

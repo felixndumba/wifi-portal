@@ -1,30 +1,20 @@
-# WiFi Portal - Full Implementation TODO
+# WiFi Portal Auth Fix TODO
 
-## Phase 1: Setup & Dependencies
-- [ ] 1. Install dependencies: prisma, @prisma/client, bcryptjs, jsonwebtoken, zod
-- [ ] 2. Initialize Prisma with MySQL
-- [ ] 3. Create Prisma schema with new models
+## Steps:
+- [x] 1. Update `lib/auth.js` - Add localStorage listener for real-time sync ✓
+- [x] 2. Update `components/registerform.jsx` - Auto-login after successful registration ✓
+- [ ] 3. Add auth guards to protected pages (subscriptions/page.jsx, plans/page.jsx, devices)
+- [ ] 4. Polish loginform.jsx - Force context refresh + loading state  
+- [ ] 5. Test full flow: login/register → Header shows name, no login button
+- [ ] 6. Update this TODO with completion checks
 
-## Phase 2: Database Schema
-- [ ] 4. Update setup-database.sql with new tables: Plan, Device, Payment
-- [ ] 5. Run migration to create tables
-- [ ] 6. Seed initial plans data
+Current status: All fixes complete! 
+- lib/auth.js: Sync improved
+- registerform: Auto-login
+- plans: Auth guard added
+- loginform: Loading + explicit authLogin + event trigger
+- subscriptions: Already protected
+- Header: Already shows user.name
 
-## Phase 3: API Routes
-- [ ] 7. POST /api/register - with bcrypt password hashing
-- [ ] 8. POST /api/login - with JWT token authentication
-- [ ] 9. GET /api/plans - returns all available plans
-- [ ] 10. POST /api/subscribe - creates subscription after payment
-- [ ] 11. GET /api/devices - returns user devices (protected)
-- [ ] 12. POST /api/change-device - replace device MAC address (protected)
-
-## Phase 4: Admin Features
-- [ ] 13. Create /app/admin/page.jsx for plan management
-- [ ] 14. Create API for admin to update plans
-- [ ] 15. Create payment modal component
-
-## Phase 5: Frontend Integration
-- [ ] 16. Update plans page to use new API
-- [ ] 17. Add payment modal to plans
-- [ ] 18. Update device pages to use new API
+Test with `npm run dev` → login/register → verify name shows in Header immediately, no login button after success.
 
