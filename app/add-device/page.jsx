@@ -21,6 +21,7 @@ export default function AddDevicePage() {
       return;
     }
 
+
     if (!deviceName || !deviceType) {
       alert("Please fill in all required fields");
       return;

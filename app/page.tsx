@@ -1,7 +1,6 @@
-import LoginPage from "./login/page"
 
-export default function Home(){
+import Plans from "./plans/page";
 
-return <LoginPage/>
-
-}
+export default function Home() {
+  return <Plans />;
+} 

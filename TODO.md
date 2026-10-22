@@ -1,20 +1,10 @@
-# WiFi Portal Auth Fix TODO
+## TODO
+- [ ] Update payment modal in `app/plans/page.jsx` to collect mobile number for M-Pesa
+- [ ] Add M-Pesa STK Push initiation endpoint (sandbox keys) `POST /api/payments/mpesa/stkpush`
+- [ ] Add M-Pesa callback endpoint `POST /api/payments/mpesa/callback`
+- [ ] Add M-Pesa helper/service `lib/mpesa.js` (OAuth token + password generation)
+- [ ] Wire `handlePayNow` in `app/plans/page.jsx` to call STK Push API and return `checkoutRequestId`
+- [ ] (Demo) Store payment reference for matching callback -> subscription/payment (if applicable)
 
-## Steps:
-- [x] 1. Update `lib/auth.js` - Add localStorage listener for real-time sync ✓
-- [x] 2. Update `components/registerform.jsx` - Auto-login after successful registration ✓
-- [ ] 3. Add auth guards to protected pages (subscriptions/page.jsx, plans/page.jsx, devices)
-- [ ] 4. Polish loginform.jsx - Force context refresh + loading state  
-- [ ] 5. Test full flow: login/register → Header shows name, no login button
-- [ ] 6. Update this TODO with completion checks
-
-Current status: All fixes complete! 
-- lib/auth.js: Sync improved
-- registerform: Auto-login
-- plans: Auth guard added
-- loginform: Loading + explicit authLogin + event trigger
-- subscriptions: Already protected
-- Header: Already shows user.name
-
-Test with `npm run dev` → login/register → verify name shows in Header immediately, no login button after success.
+- [ ] Run local dev server and manually verify STK push initiation + callback handling logs
 
