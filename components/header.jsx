@@ -51,12 +51,6 @@ export default function Header() {
           Internet Plans
         </Link>
        
-        <p className="cursor-pointer hover:text-yellow-500 transition-colors font-medium">
-          Add Device
-        </p>
-        <p className="cursor-pointer hover:text-yellow-500 transition-colors font-medium">
-          Change Device
-        </p>
         
     
       </div>

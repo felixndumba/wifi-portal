@@ -1,6 +1,5 @@
-
-import Plans from "./plans/page";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return <Plans />;
-} 
+  redirect("/plans");
+}
