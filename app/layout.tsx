@@ -1,22 +1,9 @@
-
 import type { Metadata } from "next";
-import { AuthProvider } from "@/lib/auth";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
-  title: "Nairika Labs | Paid Wi-Fi",
-  description: "Purchase affordable Wi-Fi access using M-Pesa.",
+  title: "Nairika Labs Wi-Fi",
+  description: "Connect to Wi-Fi and choose your internet plan.",
 };
 
 export default function RootLayout({
@@ -26,11 +13,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans bg-gray-100 min-h-screen`}
-      >
-        <AuthProvider>{children}</AuthProvider>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
