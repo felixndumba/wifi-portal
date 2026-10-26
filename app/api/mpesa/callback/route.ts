@@ -1,4 +1,3 @@
-   
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
 
@@ -44,10 +43,12 @@ export async function POST(request: NextRequest) {
     const merchantRequestId = callback.MerchantRequestID
       ? String(callback.MerchantRequestID)
       : null;
+
     const resultCode = Number(callback.ResultCode);
     const resultDesc = String(callback.ResultDesc || "");
 
-    const { status, paymentStatus } = getPaymentStatuses(resultCode);
+    const { status, paymentStatus } =
+      getPaymentStatuses(resultCode);
 
     let receipt: string | null = null;
     let amount: number | null = null;
@@ -74,17 +75,21 @@ export async function POST(request: NextRequest) {
 
       if (rawDate != null && /^\d{14}$/.test(String(rawDate))) {
         const date = String(rawDate);
+
         paidAt =
           `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)} ` +
           `${date.slice(8, 10)}:${date.slice(10, 12)}:${date.slice(12, 14)}`;
       }
 
-      if (!receipt || amount === null || !Number.isFinite(amount)) {
-        console.error("Successful callback has incomplete metadata.", {
-          checkoutRequestId,
-          receipt,
-          amount,
-        });
+      if (
+        !receipt ||
+        amount === null ||
+        !Number.isFinite(amount)
+      ) {
+        console.error(
+          "Successful callback has incomplete metadata.",
+          { checkoutRequestId, receipt, amount }
+        );
 
         return NextResponse.json({
           ResultCode: 0,
@@ -93,27 +98,48 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Update the existing payment row; never insert a duplicate.
+    // Update the existing payment; never insert a duplicate.
+    // A successful payment enters the activation queue.
+    // Do not reset a payment already processing or activated.
     const [result]: any = await db.execute(
       `UPDATE payments
        SET status = ?,
            payment_status = ?,
-           merchant_request_id = COALESCE(?, merchant_request_id),
-           mpesa_receipt = COALESCE(?, mpesa_receipt),
+
+           activation_status = CASE
+             WHEN ? = 0
+               AND COALESCE(activation_status, 'pending')
+                   NOT IN ('processing', 'activated')
+             THEN 'pending'
+             ELSE activation_status
+           END,
+
+           merchant_request_id =
+             COALESCE(?, merchant_request_id),
+
+           mpesa_receipt =
+             COALESCE(?, mpesa_receipt),
+
            amount = CASE
              WHEN ? IS NOT NULL THEN ?
              ELSE amount
            END,
-           phone_number = COALESCE(?, phone_number),
+
+           phone_number =
+             COALESCE(?, phone_number),
+
            paid_at = CASE
              WHEN ? = 0 THEN COALESCE(?, paid_at)
              ELSE paid_at
            END,
+
            updated_at = NOW()
+
        WHERE checkout_request_id = ?`,
       [
         status,
         paymentStatus,
+        resultCode,
         merchantRequestId,
         receipt,
         amount,
@@ -127,7 +153,14 @@ export async function POST(request: NextRequest) {
 
     if (result.affectedRows === 0) {
       const [rows]: any = await db.execute(
-        `SELECT ID, checkout_request_id, status, payment_status
+        `SELECT
+           ID,
+           checkout_request_id,
+           status,
+           payment_status,
+           activation_status,
+           mac_address,
+           duration_minutes
          FROM payments
          WHERE checkout_request_id = ?
          LIMIT 1`,
@@ -140,7 +173,10 @@ export async function POST(request: NextRequest) {
           checkoutRequestId
         );
       } else {
-        console.log("Payment row already has these values:", rows[0]);
+        console.log(
+          "Payment row matched; no database values changed:",
+          rows[0]
+        );
       }
     }
 
@@ -166,4 +202,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-   
