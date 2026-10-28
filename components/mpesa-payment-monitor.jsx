@@ -1,12 +1,10 @@
-    
+
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const FINAL_STATUSES = new Set([
-  "paid",
-  "completed",
+const PAYMENT_FAILURES = new Set([
   "cancelled",
   "failed",
   "timeout",
@@ -16,22 +14,45 @@ const FINAL_STATUSES = new Set([
 function normalizeStatus(value) {
   const normalized = String(value || "pending").toLowerCase();
 
-  if (normalized === "completed" || normalized === "success") {
+  if (["completed", "success", "paid"].includes(normalized)) {
     return "paid";
   }
 
-  if (normalized === "expired") {
+  if (["expired", "timed_out"].includes(normalized)) {
     return "timeout";
+  }
+
+  if (["cancelled", "canceled"].includes(normalized)) {
+    return "cancelled";
   }
 
   return normalized;
 }
 
-export default function MpesaPaymentMonitor({ checkoutRequestId }) {
+function normalizeActivation(value) {
+  const normalized = String(value || "pending").toLowerCase();
+
+  if (["activated", "active", "success"].includes(normalized)) {
+    return "activated";
+  }
+
+  if (["failed", "error"].includes(normalized)) {
+    return "failed";
+  }
+
+  return normalized;
+}
+
+export default function MpesaPaymentMonitor({
+  checkoutRequestId,
+  linkLogin = "",
+  linkOrig = "",
+}) {
   const router = useRouter();
 
   const [status, setStatus] = useState("pending");
   const [payment, setPayment] = useState(null);
+  const [activationStatus, setActivationStatus] = useState("pending");
   const [message, setMessage] = useState(
     "Check your phone and enter your M-Pesa PIN."
   );
@@ -39,28 +60,42 @@ export default function MpesaPaymentMonitor({ checkoutRequestId }) {
   const [delayed, setDelayed] = useState(false);
   const [lastChecked, setLastChecked] = useState(null);
 
-  const statusRef = useRef("pending");
+  const mountedRef = useRef(false);
   const checkingRef = useRef(false);
   const timerRef = useRef(null);
-  const mountedRef = useRef(false);
+  const redirectedRef = useRef(false);
+  const statusRef = useRef("pending");
+  const activationRef = useRef("pending");
+  const startedAtRef = useRef(Date.now());
 
-  const updateStatus = useCallback((nextStatus) => {
-    const normalized = normalizeStatus(nextStatus);
-
+  const updatePaymentStatus = useCallback((value) => {
+    const normalized = normalizeStatus(value);
     statusRef.current = normalized;
     setStatus(normalized);
+    return normalized;
+  }, []);
 
+  const updateActivationStatus = useCallback((value) => {
+    const normalized = normalizeActivation(value);
+    activationRef.current = normalized;
+    setActivationStatus(normalized);
     return normalized;
   }, []);
 
   const checkStatus = useCallback(async () => {
     if (!checkoutRequestId || checkingRef.current) {
-      return null;
+      return;
     }
 
-    // Never check again after a final status has been received.
-    if (FINAL_STATUSES.has(statusRef.current)) {
-      return statusRef.current;
+    if (PAYMENT_FAILURES.has(statusRef.current)) {
+      return;
+    }
+
+    if (
+      statusRef.current === "paid" &&
+      ["activated", "failed"].includes(activationRef.current)
+    ) {
+      return;
     }
 
     checkingRef.current = true;
@@ -83,73 +118,79 @@ export default function MpesaPaymentMonitor({ checkoutRequestId }) {
         }
       );
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (!mountedRef.current) {
-        return null;
+        return;
       }
 
       if (!response.ok || !data.success || !data.payment) {
         setMessage(
           data.error ||
-            "We could not confirm the payment status. Please check again."
+            "We could not retrieve your payment status. We will try again automatically."
         );
-
-        return null;
+        return;
       }
 
-      const nextStatus = normalizeStatus(data.payment.status);
+      const currentPayment = data.payment;
+      const nextStatus = updatePaymentStatus(
+        currentPayment.payment_status === "paid"
+          ? "paid"
+          : currentPayment.status
+      );
 
-      setPayment(data.payment);
-      updateStatus(nextStatus);
+      const nextActivation = updateActivationStatus(
+        currentPayment.activation_status ??
+          currentPayment.activationStatus ??
+          "pending"
+      );
+
+      setPayment(currentPayment);
       setLastChecked(new Date());
 
-      switch (nextStatus) {
-        case "paid":
-          setMessage("Payment confirmed successfully.");
-          break;
-
-        case "cancelled":
+      if (nextStatus === "paid") {
+        if (nextActivation === "activated") {
           setMessage(
-            "The payment was cancelled. No internet access has been activated."
+            "Payment confirmed and internet access activated. Connecting your device..."
           );
-          break;
-
-        case "failed":
+        } else if (nextActivation === "failed") {
           setMessage(
-            "M-Pesa reported that the payment failed. Check your M-Pesa messages before trying again."
+            "Payment was received, but automatic internet activation needs attention. Please contact support. Do not pay again."
           );
-          break;
-
-        case "timeout":
+        } else {
           setMessage(
-            "The M-Pesa request timed out. Check your M-Pesa messages before requesting another payment."
+            "Payment confirmed. Waiting for the Wi-Fi router to activate your device..."
           );
-          break;
+        }
 
-        case "pending":
-          setMessage(
-            "We are waiting for M-Pesa confirmation. Check your phone for the payment prompt."
-          );
-          break;
-
-        default:
-          setMessage(
-            `Payment status: ${nextStatus}. Please contact support if you need assistance.`
-          );
+        return;
       }
 
-      return nextStatus;
+      if (nextStatus === "cancelled") {
+        setMessage(
+          "The payment was cancelled. No internet access has been activated."
+        );
+      } else if (nextStatus === "failed") {
+        setMessage(
+          "M-Pesa reported that the payment failed. Check your M-Pesa messages before trying again."
+        );
+      } else if (nextStatus === "timeout") {
+        setMessage(
+          "The payment request timed out. Check your M-Pesa messages before requesting another payment."
+        );
+      } else {
+        setMessage(
+          "Waiting for M-Pesa confirmation. Check your phone for the payment prompt."
+        );
+      }
     } catch (error) {
-      console.error("Could not check M-Pesa payment status:", error);
+      console.error("M-Pesa status check failed:", error);
 
       if (mountedRef.current) {
         setMessage(
           "Connection interrupted while checking payment status. Your payment may still be processing."
         );
       }
-
-      return null;
     } finally {
       checkingRef.current = false;
 
@@ -157,7 +198,7 @@ export default function MpesaPaymentMonitor({ checkoutRequestId }) {
         setChecking(false);
       }
     }
-  }, [checkoutRequestId, updateStatus]);
+  }, [checkoutRequestId, updatePaymentStatus, updateActivationStatus]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -177,10 +218,14 @@ export default function MpesaPaymentMonitor({ checkoutRequestId }) {
     }
 
     let stopped = false;
-    const startedAt = Date.now();
 
     statusRef.current = "pending";
+    activationRef.current = "pending";
+    redirectedRef.current = false;
+    startedAtRef.current = Date.now();
+
     setStatus("pending");
+    setActivationStatus("pending");
     setPayment(null);
     setDelayed(false);
     setLastChecked(null);
@@ -188,6 +233,7 @@ export default function MpesaPaymentMonitor({ checkoutRequestId }) {
 
     if (timerRef.current) {
       clearTimeout(timerRef.current);
+      timerRef.current = null;
     }
 
     const poll = async () => {
@@ -195,28 +241,27 @@ export default function MpesaPaymentMonitor({ checkoutRequestId }) {
         return;
       }
 
-      const result = await checkStatus();
+      await checkStatus();
 
       if (stopped || !mountedRef.current) {
         return;
       }
 
-      // Critical fix: stop polling when the payment reaches a final status.
-      const currentStatus = statusRef.current;
+      const paymentStatus = statusRef.current;
+      const activation = activationRef.current;
 
-      if (
-        FINAL_STATUSES.has(currentStatus) ||
-        (result && FINAL_STATUSES.has(result))
-      ) {
-        if (timerRef.current) {
-          clearTimeout(timerRef.current);
-          timerRef.current = null;
-        }
-
+      if (PAYMENT_FAILURES.has(paymentStatus)) {
         return;
       }
 
-      if (Date.now() - startedAt >= 120000) {
+      if (
+        paymentStatus === "paid" &&
+        ["activated", "failed"].includes(activation)
+      ) {
+        return;
+      }
+
+      if (Date.now() - startedAtRef.current >= 120000) {
         setDelayed(true);
       }
 
@@ -236,20 +281,46 @@ export default function MpesaPaymentMonitor({ checkoutRequestId }) {
   }, [checkoutRequestId, checkStatus]);
 
   useEffect(() => {
-    if (status !== "paid") {
+    if (
+      status !== "paid" ||
+      activationStatus !== "activated" ||
+      redirectedRef.current
+    ) {
       return;
     }
 
-    const timer = setTimeout(() => {
-      router.push(
-        `/payment/success?receipt=${encodeURIComponent(
-          payment?.receipt || ""
-        )}`
-      );
-    }, 2500);
+    redirectedRef.current = true;
 
-    return () => clearTimeout(timer);
-  }, [status, payment?.receipt, router]);
+    // Use the original MikroTik login URL when it is valid.
+    if (linkLogin) {
+      try {
+        const target = new URL(linkLogin);
+
+        if (
+          target.protocol === "http:" ||
+          target.protocol === "https:"
+        ) {
+          window.location.assign(target.href);
+          return;
+        }
+      } catch (error) {
+        console.error("Invalid hotspot login URL:", error);
+      }
+    }
+
+    // Fallback when no valid login URL was supplied.
+    router.replace(
+      `/payment/success?receipt=${encodeURIComponent(
+        payment?.receipt || ""
+      )}`
+    );
+  }, [
+    status,
+    activationStatus,
+    linkLogin,
+    payment?.receipt,
+    router,
+  ]);
 
   if (!checkoutRequestId) {
     return null;
@@ -271,7 +342,9 @@ export default function MpesaPaymentMonitor({ checkoutRequestId }) {
     pending: "Waiting for payment",
   };
 
-  const isFinal = FINAL_STATUSES.has(status);
+  const paymentFailed = PAYMENT_FAILURES.has(status);
+  const activationFailed =
+    status === "paid" && activationStatus === "failed";
 
   return (
     <section
@@ -282,13 +355,11 @@ export default function MpesaPaymentMonitor({ checkoutRequestId }) {
     >
       <div className="flex items-start gap-3">
         <div className="text-2xl" aria-hidden="true">
-          {status === "paid"
+          {status === "paid" && activationStatus === "activated"
             ? "✓"
-            : status === "cancelled"
+            : paymentFailed || activationFailed
               ? "!"
-              : status === "failed" || status === "timeout"
-                ? "×"
-                : "…"}
+              : "…"}
         </div>
 
         <div className="min-w-0 flex-1">
@@ -300,8 +371,10 @@ export default function MpesaPaymentMonitor({ checkoutRequestId }) {
 
           {payment && (
             <div className="mt-3 space-y-1 text-sm">
-              {payment.packageName && (
-                <p>Plan: {payment.packageName}</p>
+              {(payment.packageName || payment.package_name) && (
+                <p>
+                  Plan: {payment.packageName || payment.package_name}
+                </p>
               )}
 
               {payment.amount != null && (
@@ -311,46 +384,67 @@ export default function MpesaPaymentMonitor({ checkoutRequestId }) {
                 </p>
               )}
 
-              {payment.receipt && (
+              {(payment.receipt || payment.mpesa_receipt_number) && (
                 <p>
-                  M-Pesa receipt: <strong>{payment.receipt}</strong>
+                  M-Pesa receipt:{" "}
+                  <strong>
+                    {payment.receipt || payment.mpesa_receipt_number}
+                  </strong>
                 </p>
               )}
             </div>
           )}
 
-          {delayed && status === "pending" && (
+          {status === "paid" && (
+            <div className="mt-3 rounded-lg border border-current/20 p-3 text-sm">
+              <p>
+                <strong>Internet activation:</strong>{" "}
+                {activationStatus === "activated"
+                  ? "Activated"
+                  : activationStatus === "failed"
+                    ? "Needs attention"
+                    : activationStatus === "processing"
+                      ? "Router is processing your connection"
+                      : "Waiting for router"}
+              </p>
+            </div>
+          )}
+
+          {delayed && !paymentFailed && status !== "paid" && (
             <p className="mt-3 text-sm">
               Confirmation is taking longer than expected. Do not pay again
               yet. Check your M-Pesa messages before retrying.
             </p>
           )}
 
-          {status === "paid" && (
+          {delayed && status === "paid" && activationStatus !== "activated" && (
             <p className="mt-3 text-sm">
-              Redirecting you to the confirmation page…
+              Activation is taking longer than expected. Your payment is
+              confirmed; please do not pay again.
             </p>
           )}
 
           <div className="mt-4 flex flex-wrap gap-3">
-            {!isFinal && (
-              <button
-                type="button"
-                onClick={checkStatus}
-                disabled={checking}
-                className="rounded-lg border border-current px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {checking ? "Checking…" : "Check payment status"}
-              </button>
-            )}
+            {!paymentFailed &&
+              !(status === "paid" && activationStatus === "activated") &&
+              !activationFailed && (
+                <button
+                  type="button"
+                  onClick={checkStatus}
+                  disabled={checking}
+                  className="rounded-lg border border-current px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {checking ? "Checking..." : "Check status"}
+                </button>
+              )}
 
-            {status !== "paid" && (
+            {(paymentFailed || activationFailed) && (
               <button
                 type="button"
                 onClick={() => router.push("/plans")}
                 className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-medium text-white"
               >
-                {isFinal ? "Return to plans" : "Close"}
+                Return to plans
               </button>
             )}
           </div>
@@ -365,4 +459,3 @@ export default function MpesaPaymentMonitor({ checkoutRequestId }) {
     </section>
   );
 }
-      

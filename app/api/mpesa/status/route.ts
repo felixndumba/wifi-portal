@@ -10,10 +10,18 @@ export async function GET(request: NextRequest) {
     .get("checkoutRequestId")
     ?.trim();
 
+  const headers = {
+    "Cache-Control": "no-store, no-cache, must-revalidate",
+    Pragma: "no-cache",
+  };
+
   if (!checkoutRequestId) {
     return NextResponse.json(
-      { success: false, error: "Missing checkoutRequestId." },
-      { status: 400 }
+      {
+        success: false,
+        error: "Missing checkoutRequestId.",
+      },
+      { status: 400, headers }
     );
   }
 
@@ -23,9 +31,12 @@ export async function GET(request: NextRequest) {
         checkout_request_id,
         status,
         payment_status,
+        activation_status,
         package_name,
         amount,
-        mpesa_receipt
+        mpesa_receipt,
+        activation_error,
+        activated_at
       FROM payments
       WHERE checkout_request_id = ?
       LIMIT 1`,
@@ -39,54 +50,74 @@ export async function GET(request: NextRequest) {
           status: "unknown",
           error: "Payment record not found.",
         },
-        {
-          status: 404,
-          headers: { "Cache-Control": "no-store" },
-        }
+        { status: 404, headers }
       );
     }
 
     const row = rows[0];
 
-    const rawStatus = String(
+    // Payment and activation are separate states.
+    const rawPaymentStatus = String(
       row.payment_status || row.status || "pending"
     ).toLowerCase();
 
-    let status = rawStatus;
+    let paymentStatus = rawPaymentStatus;
 
-    if (rawStatus === "completed" || rawStatus === "success") {
-      status = "paid";
-    } else if (rawStatus === "expired") {
-      status = "timeout";
-    } else if (rawStatus === "cancelled") {
-      status = "cancelled";
-    } else if (rawStatus === "failed") {
-      status = "failed";
+    if (
+      rawPaymentStatus === "completed" ||
+      rawPaymentStatus === "success"
+    ) {
+      paymentStatus = "paid";
+    } else if (rawPaymentStatus === "expired") {
+      paymentStatus = "timeout";
+    } else if (
+      rawPaymentStatus === "cancelled" ||
+      rawPaymentStatus === "canceled"
+    ) {
+      paymentStatus = "cancelled";
+    } else if (
+      rawPaymentStatus === "failed" ||
+      rawPaymentStatus === "error"
+    ) {
+      paymentStatus = "failed";
     }
+
+    const activationStatus = String(
+      row.activation_status || "pending"
+    ).toLowerCase();
 
     return NextResponse.json(
       {
         success: true,
         payment: {
           checkoutRequestId: row.checkout_request_id,
-          status,
-          packageName: row.package_name,
-          amount: Number(row.amount),
+
+          // Kept for compatibility with the existing monitor.
+          status: paymentStatus,
+          payment_status: paymentStatus,
+
+          activation_status: activationStatus,
+          activationStatus,
+
+          packageName: row.package_name || null,
+          amount: Number(row.amount || 0),
           receipt: row.mpesa_receipt || null,
+
+          activationError: row.activation_error || null,
+          activatedAt: row.activated_at || null,
         },
       },
-      {
-        status: 200,
-        headers: { "Cache-Control": "no-store" },
-      }
+      { status: 200, headers }
     );
   } catch (error) {
     console.error("[MPESA STATUS API ERROR]", error);
 
     return NextResponse.json(
-      { success: false, error: "Could not check payment status." },
-      { status: 500 }
+      {
+        success: false,
+        error: "Could not check payment status.",
+      },
+      { status: 500, headers }
     );
   }
 }
-  
